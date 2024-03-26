@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""
-Log stats
-"""
 from pymongo import MongoClient
 
 
@@ -16,8 +12,7 @@ def log_stats():
     put = logs_collection.count_documents({"method": "PUT"})
     patch = logs_collection.count_documents({"method": "PATCH"})
     delete = logs_collection.count_documents({"method": "DELETE"})
-    path = logs_collection.count_documents(
-        {"method": "GET", "path": "/status"})
+    path = logs_collection.count_documents({"method": "GET", "path": "/status"})
     print(f"{total} logs")
     print("Methods:")
     print(f"\tmethod GET: {get}")
@@ -27,15 +22,17 @@ def log_stats():
     print(f"\tmethod DELETE: {delete}")
     print(f"{path} status check")
     print("IPs:")
-    sorted_ips = logs_collection.aggregate(
-        [{"$group": {"_id": "$ip", "count": {"$sum": 1}}},
-         {"$sort": {"count": -1}}])
-    i = 0
-    for s in sorted_ips:
-        if i == 10:
-            break
-        print(f"\t{s.get('_id')}: {s.get('count')}")
-        i += 1
+    
+    # Pipeline to get top 10 IPs by access count
+    pipeline = [
+        {"$group": {"_id": "$ip", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    sorted_ips = logs_collection.aggregate(pipeline)
+    
+    for ip_info in sorted_ips:
+        print(f"\t{ip_info['_id']}: {ip_info['count']}")
 
 
 if __name__ == "__main__":
